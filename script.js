@@ -46,16 +46,27 @@ var frag_source = `
         }
     }
 
-    void main(void){
-        vec4 background_colour = vec4(0.529411765, 0.807843137, 0.980392157, 1);
-        vec4 sunlight_colour = vec4(1.0, 1.0, 1.0, 1.0);
+    float sun_fill(float distance, vec2 position){
+        if(position.y < 0.0 && distance <= 0.035){
+            return 0.0;
+        } else {
+            return 1.0;
+        }
+    }
 
+    void main(void){
+        vec4 sky_colour = vec4(0.529411765, 0.807843137, 0.980392157, 1);
+        vec4 sunlight_colour = vec4(1.0, 1.0, 1.0, 1.0);
+        
         float distance = length(sun_position - vert_position);
         float radius = 0.8;
 
-        //gl_FragColor = vert_colour + pow(distance / radius, 2.0) * vec4(0.529411765, 0.807843137, 0.980392157, 1);
+        vec3 background = vert_colour.rgb * sun_fill(distance, vert_position);
+        vec3 sky = sky_colour.rgb * sunlight_scale(distance, radius, vert_position);
+        vec3 sun = sunlight_colour.rgb * sun_scale(distance, vert_position);
 
-        gl_FragColor = vert_colour + 0.5 * sunlight_scale(distance, radius, vert_position) * background_colour + 0.5 * sun_scale(distance, vert_position) * sunlight_colour;
+        gl_FragColor = vec4(background + 0.5 * sky + 0.5 * sun, 1.0);
+
     }
 `;
 
