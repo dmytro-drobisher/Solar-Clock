@@ -54,6 +54,32 @@ var frag_source = `
         }
     }
 
+    float horison_sun_elevation_scale(vec2 sun){
+        if(sun.y > -0.4 && sun.y <= 0.05){
+            return 0.4 * pow(sun.y + 0.3, 2.0);
+        } else if(sun.y > 0.05 && sun.y < 0.3){
+            return 0.4 *pow(sun.y - 0.407, 2.0);
+        } else {
+            return 0.0;
+        }
+    }
+
+    float horison_scale(float distance, vec2 position, vec2 sun){
+        if(position.y < 0.0){
+            return 0.0;
+        }
+        float c = horison_sun_elevation_scale(sun); //0.044;
+        float b = 0.1;
+        float a = position.x;
+
+        float y = c * pow(2.718, - pow(position.x - sun.x, 2.0) / b);
+        if(position.y <= y){
+            return 1.0;
+        } else {
+            return 0.0;
+        }
+    }
+
     void main(void){
         vec4 sky_colour = vec4(0.529411765, 0.807843137, 0.980392157, 1);
         vec4 sunlight_colour = vec4(1.0, 1.0, 1.0, 1.0);
@@ -65,7 +91,7 @@ var frag_source = `
         vec3 sky = sky_colour.rgb * sunlight_scale(distance, radius, vert_position);
         vec3 sun = sunlight_colour.rgb * sun_scale(distance, vert_position);
 
-        gl_FragColor = vec4(background + 0.5 * sky + 0.5 * sun, 1.0);
+        gl_FragColor = vec4(background + 0.4 * sky + 0.4 * sun + 0.4 * horison_scale(distance, vert_position, sun_position) * sunlight_colour.rgb, 1.0);
 
     }
 `;
