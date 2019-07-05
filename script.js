@@ -55,28 +55,48 @@ var frag_source = `
     }
 
     float horison_sun_elevation_scale(vec2 sun){
-        if(sun.y > -0.4 && sun.y <= 0.05){
+        if(sun.y > -0.3 && sun.y <= 0.025){
             return 0.4 * pow(sun.y + 0.3, 2.0);
-        } else if(sun.y > 0.05 && sun.y < 0.3){
-            return 0.4 *pow(sun.y - 0.407, 2.0);
+        } else if(sun.y > 0.025 && sun.y < 0.15){
+            return 2.0 * pow(sun.y - 0.1705, 2.0);
         } else {
             return 0.0;
         }
     }
 
-    float horison_scale(float distance, vec2 position, vec2 sun){
+    float bell_curve(float x, float b, float c){
+        return c * pow(2.718, - pow(x, 2.0) / b) - 0.04;
+    }
+
+    float horison_scale(vec2 position, vec2 sun){
         if(position.y < 0.0){
             return 0.0;
         }
-        float c = horison_sun_elevation_scale(sun); //0.044;
-        float b = 0.1;
-        float a = position.x;
 
-        float y = c * pow(2.718, - pow(position.x - sun.x, 2.0) / b);
+        float b = 0.1;
+        float c = horison_sun_elevation_scale(sun); //0.044;
+
+        float y = bell_curve(position.x - sun.x, b, c);
+        
         if(position.y <= y){
-            return 1.0;
+            return 10.0;
         } else {
-            return 0.0;
+            float x;
+            float newDistance;
+            float distance = 1.0;
+
+            for(int i = -100; i <= 100; ++i){
+                x = float(i) / 100.0;
+                y = bell_curve(x - sun.x, b, c);
+                
+                newDistance = length(position - vec2(x, y));
+
+                if(newDistance < distance){
+                    distance = newDistance;
+                }
+            }
+            
+            return c * 0.2/(distance * distance) * 0.08/(length(position - sun));
         }
     }
 
@@ -91,7 +111,7 @@ var frag_source = `
         vec3 sky = sky_colour.rgb * sunlight_scale(distance, radius, vert_position);
         vec3 sun = sunlight_colour.rgb * sun_scale(distance, vert_position);
 
-        gl_FragColor = vec4(background + 0.4 * sky + 0.4 * sun + 0.4 * horison_scale(distance, vert_position, sun_position) * sunlight_colour.rgb, 1.0);
+        gl_FragColor = vec4(background + 0.4 * sky + 0.4 * sun + 0.4 * horison_scale(vert_position, sun_position) * sunlight_colour.rgb, 1.0);
 
     }
 `;
