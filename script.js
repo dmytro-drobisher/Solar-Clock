@@ -56,9 +56,9 @@ var frag_source = `
 
     float horison_sun_elevation_scale(vec2 sun){
         if(sun.y > -0.3 && sun.y <= 0.025){
-            return 0.4 * pow(sun.y + 0.3, 2.0);
+            return 0.15 * pow(sun.y + 0.3, 2.0);
         } else if(sun.y > 0.025 && sun.y < 0.15){
-            return 2.0 * pow(sun.y - 0.1705, 2.0);
+            return 0.8 * pow(sun.y - 0.1705, 2.0);
         } else {
             return 0.0;
         }
@@ -86,7 +86,7 @@ var frag_source = `
             return 0.0;
         }
 
-        float b = 0.8;
+        float b = 0.01;
         float c = horison_sun_elevation_scale(sun);
 
         float y = bell_curve(position.x - sun.x, b, c);
@@ -96,7 +96,7 @@ var frag_source = `
         } else {
             float x;
             float newDistance;
-            float distance = 10.0;
+            float distance = 0.2;
 
             for(int i = -100; i <= 100; ++i){
                 x = float(i) / 100.0;
@@ -109,7 +109,7 @@ var frag_source = `
                 }
             }
             
-            return (c * 0.2 / pow(distance+0.01, 2.0)) * horison_sunlight_scale(length(position - sun), radius * 0.65, position);
+            return (c / pow(distance, 2.0)) * horison_sunlight_scale(length(position - sun), 0.65, position);
         }
     }
 
@@ -122,18 +122,19 @@ var frag_source = `
         
         float distance = length(sun_position - vert_position);
         float radius = 0.8;
-
-        vec3 background = vert_colour.rgb * sun_fill(distance, vert_position);
-        vec3 sky = sky_colour.rgb * sunlight_scale(distance, radius, vert_position);
-        vec3 sun = sunlight_colour.rgb * sun_scale(distance, vert_position);
-
+        
         if(sun_position.x < 0.0){
             horison_colour = sunrise_colour;
         } else {
             horison_colour = sunset_colour;
         }
 
-        gl_FragColor = vec4(background + 0.4 * sky + 0.4 * sun + 1.0 * horison_scale(vert_position, sun_position, radius) * horison_colour.rgb, 1.0);
+        vec3 background = vert_colour.rgb * sun_fill(distance, vert_position);
+        vec3 sky = 1.0 * sky_colour.rgb * sunlight_scale(distance, radius, vert_position);
+        vec3 sun = sunlight_colour.rgb * sun_scale(distance, vert_position);
+
+
+        gl_FragColor = vec4(background + 0.8 * sky + 0.4 * sun + horison_scale(vert_position, sun_position, radius) * horison_colour.rgb * 0.3, 1.0);
 
     }
 `;
@@ -250,12 +251,14 @@ function draw(gl, program, position, frame, colours, cosine, cosine_colours, hor
 
     // do animation: go through full day/night cycle
     window.requestAnimationFrame(function(current_time){
-        var delta = (current_time - previous_time) / 50;
+        //var delta = (current_time - previous_time) / 50;
 
         position = [(current_angle - 180) / 180, 0.5 * Math.cos((current_angle - 180) * Math.PI / 180)];
         
-        current_angle = (current_angle + delta) % 360;
-        previous_time = current_time;
+        current_angle = document.getElementById("position").value;
+        
+        //current_angle = (current_angle + delta) % 360;
+        //previous_time = current_time;
         draw(gl, program, position, frame, colours, cosine, cosine_colours, horison, horison_colours);
     });
 }
