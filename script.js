@@ -140,7 +140,13 @@ var frag_source = `
 `;
 
 var previous_time = 0;
+var prev_latitude = 0;
+var prev_day_of_year = 0;
+
 var current_angle = 0;
+var latitude = 0;
+var longitude = 0;
+var day_of_year = 0;
 
 function create_shaders(gl) {
     // create shaders
@@ -183,14 +189,44 @@ function create_buffer(gl, data){
     return buffer;
 }
 
-function get_cos(amplitude, shift){
+function to_radians(degrees){
+    // convert degrees to radians
+
+    return degrees * Math.PI / 180;
+}
+
+function get_declination(day_of_year){
+    // get sun's declination given current day of year
+
+    return Math.asin(0.39795 * Math.cos(to_radians(0.98563 * (day_of_year - 173))));
+}
+
+function altitude_curve(day_of_year, latitude, hour_angle){
+    // sin of sun's altitude given day, latitude, and hour angle
+
+    var declination = get_declination(day_of_year);
+    return Math.sin(declination) * Math.sin(latitude) + Math.cos(declination) * Math.cos(latitude) * Math.cos(hour_angle);
+}
+
+function equation_of_time(day_of_year){
+    // solar noon offset in minutes
+
+    var rad_per_day = to_radians(360 / 365.24);
+    var orbital_angle = rad_per_day * (day_of_year + 10);
+    var corrected_orbital_angle = orbital_angle + to_radians(1.914) * Math.sin(rad_per_day * (day_of_year - 2));
+    var C = (orbital_angle - Math.atan(Math.tan(corrected_orbital_angle) / Math.cos(to_radians(23.44)))) / Math.PI;
+    return 720 * (C - Math.floor(C + 0.5));
+}
+
+function get_altitude_curve(day_of_year, latitude){
     // create points and colours from cosine wave
     var arr = [];
     var colours = [];
     for(var i = -1; i < 1; i = i + 0.01){
         arr.push(i);
-        arr.push(amplitude * Math.cos(i * Math.PI) + shift);
-        
+        //arr.push(amplitude * Math.cos(i * Math.PI) + shift);
+        arr.push(altitude_curve(day_of_year, latitude, i * Math.PI))
+
         colours.push(0.5);
         colours.push(0.5);
         colours.push(0.5);
@@ -199,6 +235,7 @@ function get_cos(amplitude, shift){
 }
 
 function draw(gl, program, position, frame, colours, cosine, cosine_colours, horison, horison_colours){
+    
     // draw to canvas
     gl.clear(gl.COLOR_BUFFER_BIT);
     
@@ -253,10 +290,21 @@ function draw(gl, program, position, frame, colours, cosine, cosine_colours, hor
     window.requestAnimationFrame(function(current_time){
         //var delta = (current_time - previous_time) / 50;
 
-        position = [(current_angle - 180) / 180, 0.5 * Math.cos((current_angle - 180) * Math.PI / 180)];
+        position = [(current_angle - 180) / 180, altitude_curve(prev_day_of_year, to_radians(prev_latitude), to_radians(current_angle - 180))];
         
         current_angle = document.getElementById("position").value;
+        latitude = document.getElementById("latitude").value;
+        day_of_year = document.getElementById("day_of_year").value;
         
+        // update curve if either day or latitude changed
+        if (latitude != prev_latitude || day_of_year != prev_day_of_year){
+            prev_latitude = latitude;
+            prev_day_of_year = day_of_year;
+
+            var curve = get_altitude_curve(day_of_year, to_radians(latitude));
+            cosine = curve.cosine;
+        }
+
         //current_angle = (current_angle + delta) % 360;
         //previous_time = current_time;
         draw(gl, program, position, frame, colours, cosine, cosine_colours, horison, horison_colours);
@@ -277,7 +325,7 @@ window.onload = function(){
     gl.useProgram(program);
 
     // sun position
-    var position = [0.0, 0.5 * Math.cos(0)];
+    var position = [0.0, altitude_curve(173, to_radians(54.570066), 0)];
     
     // background
     var frame = [-1, -1,    1, -1,    1, 1,
@@ -285,8 +333,8 @@ window.onload = function(){
     var colours = [0, 0, 0,   0, 0, 0,   0, 0, 0,
                    0, 0, 0,   0, 0, 0,   0, 0, 0];
 
-    // cosine wave
-    var {cosine, cosine_colours} = get_cos(0.5, 0);
+    // sun altitude estimation
+    var {cosine, cosine_colours} = get_altitude_curve(173, to_radians(54.570066));
     
     //horison line
     var horison = [-1, 0, 1, 0];
