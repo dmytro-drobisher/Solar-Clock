@@ -9,7 +9,7 @@ To run it open index.html in a browser.
 ##### TODO:
 
 - [ ] Sync with time of day and remove current animation
-- [ ] Move drawing of consine wave and horison line to fragment shader
-- [ ] Add sunrise and sunset behaviuor to the shader similar to original
-- [ ] Include calculation of declination angle to offset the cosine wave based on location/time of year
+- [ ] Add better debug functionality
+- [*] Add sunrise and sunset behaviuor to the shader similar to original
+- [*] Include calculation of declination angle to offset the cosine wave based on location/time of year
 - [ ] Refactor the code because the current stucture is difficult to work with
