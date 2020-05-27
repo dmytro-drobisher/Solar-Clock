@@ -579,7 +579,7 @@ function refresh(drawing_constructs, state, animate) {
     }
 
     // compute target hour angle and draw
-    let target_hour_angle = get_hour_angle(state.now, state.longitude);
+    let target_hour_angle = ((get_hour_angle(state.now, state.longitude) + 540) % 360) - 180;
     draw(drawing_constructs, state, animate, target_hour_angle);
 }
 
