@@ -184,7 +184,6 @@ var frag_source = `
 var DEBUG = false;
 var animate = true;
 var XENhtml = false;
-var animation_in_progress = false;
 var altitude_scale = 0.8;
 
 // location
@@ -200,6 +199,7 @@ var current_state = {
     prev_latitude: 0,
     day_of_year: 0,
     prev_day_of_year: 0,
+    animation_in_progress: false
 }
 
 // everything required to draw the scene
@@ -369,7 +369,7 @@ function get_hour_angle(date, longitude){
 
     // offset noon by calculated number of minutes 
     var solar_noon = new Date(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0).getTime() + solar_noon_offset * 60 * 1000);
-    
+
     // calculate difference in in seconds between today's solar noon and current time
     var diff = (date.getTime() - solar_noon.getTime()) / 1000;
     
@@ -380,9 +380,7 @@ function get_hour_angle(date, longitude){
 function initialise(drawing_constructs, state, animate){
     // obtain webgl context
     var canvas = document.getElementById("canvas");
-    //canvas.height = 600;
-    //canvas.width = 600;
-
+    
     // set size of canvas to be the size of viewport
     canvas.height = window.innerHeight;
     canvas.width = window.innerWidth;
@@ -449,7 +447,7 @@ function draw(drawing_constructs, state, animate, target_hour_angle){
     if(!animate){
         state.current_position = [target_hour_angle / 180, altitude_curve(state.day_of_year, to_radians(state.latitude), to_radians(target_hour_angle))];
 
-        animation_in_progress = false;
+        state.animation_in_progress = false;
     }
 
     // clear canvas
@@ -522,26 +520,30 @@ function draw(drawing_constructs, state, animate, target_hour_angle){
             // hour angle is between -180 and 180 (most of the time), depending on difference between solar noons on consecutive days
             let limit = (target_hour_angle + 540) % 360;
         
-            // if target hour angle is less than current hour angle subtract 360
-            // happens when animation has to cross midnight
-            if(limit < current_angle){
-                current_angle -= 360;
-            }
-
+            
             // animation stopping condition: sun is sufficiently close to target
-            if (Math.abs(current_angle - limit) <= 0.01){
+            // TODO: find a better way to do animation with limiting condition
+            if (Math.abs(current_angle - limit) <= 0.1){
+                //if (current_angle > limit){
                 // begin countdown to screen refresh
                 if(!XENhtml){
                     // don't refresh automatically if running within XENhtml
-                    setTimeout(refresh, 60000, drawing_constructs, state, animate);
+                    setTimeout(refresh, 2000, drawing_constructs, state, animate);
                 }
-
+                
                 // stop animation from continuing
                 animate = false;
                 console.log("End. Starting refresh timer");
             }
+            
+            // if target hour angle is less than current hour angle subtract 360
+            // happens when animation has to cross midnight
+            if(limit < current_angle){
+                limit += 360;
+            }
+            
             // + 360 then % 360 to get in range 0-360
-            current_angle = (current_angle + 360 + Math.pow(Math.cos(((current_angle) / limit) * Math.PI) + 1, 0.25)) % 360;
+            current_angle = (current_angle + Math.pow(Math.cos(Math.abs(current_angle / limit) * Math.PI) + 1, 0.25)) % 360;
             
             // update current position
             state.current_position = [(current_angle - 180) / 180, altitude_curve(state.day_of_year, to_radians(state.latitude), to_radians(current_angle - 180))];
@@ -555,12 +557,12 @@ function draw(drawing_constructs, state, animate, target_hour_angle){
 function refresh(drawing_constructs, state, animate) {
     // refresh canvas
 
-    if(animation_in_progress){
+    if(state.animation_in_progress){
         // stop if animation is currently running
         return;
     }
 
-    animation_in_progress = true;
+    state.animation_in_progress = true;
     
     // update state
     state.now = new Date();
